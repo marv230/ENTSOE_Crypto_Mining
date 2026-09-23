@@ -5,61 +5,62 @@ import pandas as pd
 import re
 import xml.etree.ElementTree as Etree
 
-
+# ENTSOE country code
 country_code = 'DE_LU'
+# Path to the API key
+path_to_key: str = 'ENTSOE_API.txt'
+# Path to the output file
+path_to_outfile: str = 'outfile.xml'
+# Namespace used by the XML
 ns = {'ns': 'urn:iec62325.351:tc57wg16:451-3:publicationdocument:7:3'}
 
-def check_api_key(key_path: str) -> str | None:
+def get_api_key() -> str | None:
 
     # Key file doesn't exist, instantly abort
-    path = Path(key_path)
+    path = Path(path_to_key)
     if not path.exists():
-        print('./ENTSOE_API.txt not found, aborting....')
-        return ''
+        print('./' + path.name + ' not found, aborting....')
+        return None
 
-    api_fr = open('ENTSOE_API.txt')
-    line = api_fr.read()
+    # Read only the first line of file
+    line = open(path).read()
 
     #Find API key match in first line of file and return
     match = re.match(r'[a-zA-Z0-9]{8}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{12}', line)
     if match is None:
-        print('No API key found in file, aborting....')
+        print('No API valid key format found in file, aborting....')
         return None
     return match.group(0)
 
-def use_api(ts_prev: pd.Timestamp, outfile_path: str):
+def use_api(ts_prev: pd.Timestamp):
 
     ts_cur = ts_prev + pd.Timedelta(days=1)
 
     # If an invalid timestamp is provided, abort
     if pd.isna(ts_prev) or pd.isna(ts_cur):
-        print('Invalid timestamp, aborting....')
+        print('Invalid timestamp provided, aborting....')
         return
 
     # Create API client and write to file
-    match = check_api_key('ENTSOE_API.txt')
-    if match is None:
-        return
-    client = EntsoeRawClient(api_key=match)
+    key_match = get_api_key()
+    client = EntsoeRawClient(api_key=key_match)
     try:
         xml_string = client.query_day_ahead_prices(country_code, start=ts_prev, end=ts_cur, sequence=1)
-        with open(outfile_path, 'w') as xml_fr:
-            xml_fr.write(xml_string)
+        open(path_to_outfile, 'w').write(xml_string)
 
     # Catch any API errors
     except Exception as e:
         print(f'Error making API request: {e}\n')
         return
 
-def update_outfile(ts: pd.Timestamp, outfile_path: str):
+def update_outfile(ts: pd.Timestamp) -> None:
 
     # If no data file found, fetch API request after creating file
-    outfile_path_obj = Path(outfile_path)
+    outfile_path_obj = Path(path_to_outfile)
     if not outfile_path_obj.exists():
         print('No data file found, fetching API request....\n')
-        # Create file at that path, then use API to fill file
         outfile_path_obj.touch()
-        use_api(ts, outfile_path)
+        use_api(ts)
 
     # Fetch date of existing data file and check against requested day
     else:
@@ -67,7 +68,7 @@ def update_outfile(ts: pd.Timestamp, outfile_path: str):
             xml_tree = Etree.parse(outfile_path_obj)
         except Etree.ParseError:
             print('Invalid XML file, fetching API request....\n')
-            use_api(ts, outfile_path)
+            use_api(ts)
         root = xml_tree.getroot()
 
         # Extract date from XML file
@@ -88,7 +89,7 @@ def update_outfile(ts: pd.Timestamp, outfile_path: str):
 
         if not curve_period:
             print('Date in XML not found, fetching API request....\n')
-            use_api(ts, outfile_path)
+            use_api(ts)
 
         # If current time is not in the XML daterange, update file through API request
         else:
@@ -96,11 +97,11 @@ def update_outfile(ts: pd.Timestamp, outfile_path: str):
                 print('Existing data in XML is up to date!\n')
             else:
                 print('Existing data in XML is outdated, fetching API request....\n')
-                use_api(ts, outfile_path)
+                use_api(ts)
 
-def extract_prices(outfile_path: str) -> dict[int, float]:
+def extract_prices() -> dict[int, float]:
     # Validity of XML already checked in update_outfile()
-    tree = Etree.parse(outfile_path)
+    tree = Etree.parse(path_to_outfile)
     root = tree.getroot()
 
     timeref = pd.Timestamp.now()
@@ -136,21 +137,17 @@ def printf_and_save(price_dict: dict[int, float]) -> None:
         fr.write(out)
 
 if __name__ == '__main__':
-    path_to_key: str = 'ENTSOE_API.txt'
-    path_to_outfile: str = 'outfile.xml'
-
     # Check API key before touching anything else
-    if not check_api_key(path_to_key):
-        print("API key path not found or invalid key format, exiting....\n")
+    if get_api_key() is None:
         exit(1)
 
     # Fetch time current day
     date_today = pandas.Timestamp.now(tz='Europe/Brussels')
     print("Fetched date today: " + str(date_today.year) + "-" + str(date_today.month) + "-" + str(date_today.day))
 
-    update_outfile(date_today, path_to_outfile)
+    update_outfile(date_today)
 
-    price_dict: dict[int, float | int] = extract_prices(path_to_outfile)
+    price_dict: dict[int, float | int] = extract_prices()
 
     printf_and_save(price_dict)
 
