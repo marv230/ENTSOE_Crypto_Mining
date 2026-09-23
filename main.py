@@ -12,7 +12,10 @@ path_to_key: str = 'ENTSOE_API.txt'
 # Path to the output file
 path_to_outfile: str = 'outfile.xml'
 # Namespace used by the XML
-ns = {'ns': 'urn:iec62325.351:tc57wg16:451-3:publicationdocument:7:3'}
+ns: dict[str, str] = {'ns': 'urn:iec62325.351:tc57wg16:451-3:publicationdocument:7:3'}
+TIMEZONE: str = 'Europe/Brussels'
+# Dictionary for time spots
+price_dict: dict[int, float] = {}
 
 def get_api_key() -> str | None:
 
@@ -101,17 +104,15 @@ def update_outfile(ts: pd.Timestamp) -> None:
                 print('Existing data in XML is outdated, fetching API request....\n')
                 use_api(ts)
 
-def extract_prices() -> dict[int, float]:
+def extract_prices() -> None:
     # Validity of XML already checked in update_outfile()
     tree = Etree.parse(path_to_outfile)
     root = tree.getroot()
 
     timeref = pd.Timestamp.now()
     TIMESLICE_RES = pd.Timedelta(minutes=15)
-    TIMEZONE = 'Europe/Brussels'
     start_time = pd.Timestamp(timeref.floor(freq='D'), tz=TIMEZONE)
 
-    prices = {}
     # Find all Point elements regardless of hierarchy depth
     for point in root.findall('.//ns:Point', ns):
         pos_elem = point.find('ns:position', ns)
@@ -123,11 +124,10 @@ def extract_prices() -> dict[int, float]:
             time_pos = start_time + time_offset_from_start
             # Convert from MWh to kWh using 10⁻³ and round to 4 decimal places
             prz = (float(price_elem.text.strip()) * 10 ** -3).__round__(4)
-            prices[time_pos] = prz
+            price_dict[time_pos] = prz
 
-    return prices
 
-def printf_and_save(price_dict: dict[int, float]) -> None:
+def printf_and_save() -> None:
     # Write content to terminal
     out = ""
     for position, price in price_dict.items():
@@ -138,19 +138,29 @@ def printf_and_save(price_dict: dict[int, float]) -> None:
     with open("extracted_prices.txt", "w") as fr:
         fr.write(out)
 
+def filter_prices() -> None:
+    # TODO: 1. Clear any spots greater than 0ct/KWh
+    pass
+
+def combine_timeslots() -> None:
+    # TODO: 2. Combine adjacent time intervals to greater intervals
+    pass
+
 if __name__ == '__main__':
     # Check API key before touching anything else
     if get_api_key() is None:
         exit(1)
 
     # Fetch time current day
-    date_today = pandas.Timestamp.now(tz='Europe/Brussels')
+    date_today = pandas.Timestamp.now(tz=TIMEZONE)
     print("Fetched date today: " + str(date_today.year) + "-" + str(date_today.month) + "-" + str(date_today.day))
 
     update_outfile(date_today)
 
-    price_dict: dict[int, float | int] = extract_prices()
+    # Extract prices into dictionary, save that data to file, filter prices and combine timeslots
+    extract_prices()
+    printf_and_save()
+    filter_prices()
+    combine_timeslots()
 
-    printf_and_save(price_dict)
 
-    # TODO: 1. Clear any spots greater than 0ct/KWh
