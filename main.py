@@ -16,8 +16,9 @@ ns = {'ns': 'urn:iec62325.351:tc57wg16:451-3:publicationdocument:7:3'}
 
 def get_api_key() -> str | None:
 
-    # Key file doesn't exist, instantly abort
+
     path = Path(path_to_key)
+    # If key file doesn't exist, instantly abort
     if not path.exists():
         print('./' + path.name + ' not found, aborting....')
         return None
@@ -25,10 +26,11 @@ def get_api_key() -> str | None:
     # Read only the first line of file
     line = open(path).read()
 
-    #Find API key match in first line of file and return
+    # Find API key match in first line of file and return
     match = re.match(r'[a-zA-Z0-9]{8}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{12}', line)
     if match is None:
         print('No API valid key format found in file, aborting....')
+        # TODO: This return will cause any call of use_api() to not be handled correctly by the caller
         return None
     return match.group(0)
 
