@@ -131,7 +131,7 @@ def printf_and_save() -> None:
     # Write content to terminal
     out = ""
     for position, price in price_dict.items():
-        out += f"{position}, Price: {price} €/KWh\n"
+        out += f"{position}, Price: {price}€/KWh\n"
     print(out)
 
     # Save content to file
