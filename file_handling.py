@@ -151,10 +151,23 @@ def combine_timeslots(price_dict: dict[pd.Timestamp, float]) -> list:
         interval_start = reference_interval.left
         interval_end = reference_interval.right
 
-def filter_prices() -> None:
-    # TODO: 1. Clear any spots greater than 0ct/KWh
-    pass
+        # Step through list range, checking each next slice for a start time matching the previous slice end. if they match, they can be merged into a single bigger slice.
+        while index + offset + lookahead in list_range:
 
-def combine_timeslots() -> None:
-    # TODO: 2. Combine adjacent time intervals to greater intervals
-    pass
+            # pd.Interval.Overlaps() checks if the two candidate intervals share an endpoint. only works if the listed slices have closed="both", to enable overlapping at the extreme value.
+            # An alternative is to use the start and end timestamps directly.
+            if timeslices_list[index + offset].overlaps(timeslices_list[index + offset + lookahead]):
+                interval_end = timeslices_list[index + offset + lookahead].right
+                offset += 1
+            else:
+                break
+
+        # Store the position where the stepping loop reached and reset the stepping offset. avoids retrying and creating duplicate entries.
+        index = index + offset + lookahead
+        offset = 0
+
+        # Create an interval using the timeslice start and end times.
+        interval = pd.Interval(interval_start, interval_end, closed="left")
+        timeslots.append(interval)
+
+    return timeslots
