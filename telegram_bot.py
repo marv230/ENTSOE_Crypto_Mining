@@ -2,8 +2,7 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 from pathlib import Path
 import re
-
-path_to_key: str = './Telegram_API.txt'
+import main
 
 # Function that handles /start command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -14,7 +13,7 @@ async def stop(update: Update, context: ContextTypes.DEFAULT_TYPE):
     exit(0)
 
 def get_key() -> str:
-    path = Path(path_to_key)
+    path = Path(main.path_Telegram_token)
     # If key file doesn't exist, instantly abort
     if not path.exists():
         print('./' + path.name + ' not found, aborting....')

@@ -3,21 +3,14 @@ from entsoe import EntsoeRawClient
 import pandas as pd
 import re
 import xml.etree.ElementTree as Etree
+import main
 
-# ENTSOE country code
-country_code = 'DE_LU'
-# Path to the API key
-path_to_key: str = 'ENTSOE_API.txt'
-# Path to the output file
-path_to_outfile: str = 'outfile.xml'
 # Namespace used by the XML
 ns: dict[str, str] = {'ns': 'urn:iec62325.351:tc57wg16:451-3:publicationdocument:7:3'}
-# Dictionary for time spots
-price_dict: dict[int, float] = {}
-TIMEZONE: str = 'Europe/Brussels'
+TIMESLICE_RES = pd.Timedelta(minutes=15)
 
 def get_api_key() -> str | None:
-    path = Path(path_to_key)
+    path = Path(main.path_ENSTOE_key)
     # If key file doesn't exist, instantly abort
     if not path.exists():
         print('./' + path.name + ' not found, aborting....')
@@ -47,8 +40,8 @@ def use_api(ts_prev: pd.Timestamp):
     key_match = get_api_key()
     client = EntsoeRawClient(api_key=key_match)
     try:
-        xml_string = client.query_day_ahead_prices(country_code, start=ts_prev, end=ts_cur, sequence=1)
-        open(path_to_outfile, 'w').write(xml_string)
+        xml_string = client.query_day_ahead_prices(main.country_code, start=ts_prev, end=ts_cur, sequence=1)
+        open(main.path_to_outfile, 'w').write(xml_string)
 
     # Catch any API errors
     except Exception as e:
@@ -58,7 +51,7 @@ def use_api(ts_prev: pd.Timestamp):
 def update_outfile(ts: pd.Timestamp) -> None:
 
     # If no data file found, fetch API request after creating file
-    outfile_path_obj = Path(path_to_outfile)
+    outfile_path_obj = Path(main.path_to_outfile)
     if not outfile_path_obj.exists():
         print('No data file found, fetching API request....\n')
         outfile_path_obj.touch()
@@ -103,12 +96,11 @@ def update_outfile(ts: pd.Timestamp) -> None:
 
 def extract_prices() -> None:
     # Validity of XML already checked in update_outfile()
-    tree = Etree.parse(path_to_outfile)
+    tree = Etree.parse(main.path_to_outfile)
     root = tree.getroot()
 
     timeref = pd.Timestamp.now()
-    TIMESLICE_RES = pd.Timedelta(minutes=15)
-    start_time = pd.Timestamp(timeref.floor(freq='D'), tz=TIMEZONE)
+    start_time = pd.Timestamp(timeref.floor(freq='D'), tz=main.TIMEZONE)
 
     # Find all Point elements regardless of hierarchy depth
     for point in root.findall('.//ns:Point', ns):
