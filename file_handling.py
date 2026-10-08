@@ -1,8 +1,9 @@
 from pathlib import Path
-from entsoe import EntsoeRawClient
 import pandas as pd
 import re
 import xml.etree.ElementTree as Etree
+from entsoe import EntsoeRawClient
+
 import main
 
 # Namespace used by the XML

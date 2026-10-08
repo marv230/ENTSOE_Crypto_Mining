@@ -1,7 +1,8 @@
-from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 from pathlib import Path
 import re
+from telegram import Update
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+
 import main
 
 # Function that handles /start command
@@ -11,6 +12,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def stop(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text('Stopping bot...')
     exit(0)
+
+async def prices(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    #TODO: Split output of function into messages able to be sent
+    main.update_data()
+    await update.message.reply_text()
 
 def get_key() -> str:
     path = Path(main.path_Telegram_token)
@@ -38,6 +44,7 @@ def start_bot():
     # Register the /start command
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("stop", stop))
+    application.add_handler(CommandHandler("prices", prices))
 
     # Run the bot until you send a signal to stop
     application.run_polling()
