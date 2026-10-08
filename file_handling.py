@@ -94,7 +94,7 @@ def update_outfile(ts: pd.Timestamp) -> None:
                 print('Existing data in XML is outdated, fetching API request....\n')
                 use_api(ts)
 
-def extract_prices() -> None:
+def extract_prices(price_dict: dict[int, float]) -> None:
     # Validity of XML already checked in update_outfile()
     tree = Etree.parse(main.path_to_outfile)
     root = tree.getroot()
@@ -115,19 +115,17 @@ def extract_prices() -> None:
             prz = (float(price_elem.text.strip()) * 10 ** -3).__round__(4)
             price_dict[time_pos] = prz
 
-def get_price_dict() -> dict[pd.Timestamp, float]:
-    return price_dict
-
-def printf_and_save() -> None:
-    # Write content to terminal
+def concat_price_dict(price_dict: dict[pd.Timestamp, float]) -> str:
     out = ""
     for position, price in price_dict.items():
         out += f"{position}, Price: {price}€/KWh\n"
-    print(out)
+    return out
 
+def save_to_file(string: str) -> None:
     # Save content to file
     with open("extracted_prices.txt", "w") as fr:
         fr.write(out)
+        fr.write(string)
 
 def filter_prices() -> None:
     # TODO: 1. Clear any spots greater than 0ct/KWh

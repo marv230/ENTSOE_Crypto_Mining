@@ -23,15 +23,14 @@ if __name__ == '__main__':
         exit(1)
 
     # Fetch time current day
-    date_today = pandas.Timestamp.now(tz=fh.TIMEZONE)
+    date_today = pandas.Timestamp.now(tz=TIMEZONE)
     print("Fetched date today: " + str(date_today.year) + "-" + str(date_today.month) + "-" + str(date_today.day))
 
     fh.update_outfile(date_today)
 
     # Extract prices into dictionary, save that data to file, filter prices and combine timeslots
-    fh.extract_prices()
-    fh.printf_and_save()
-    fh.filter_prices()
-    fh.combine_timeslots()
-    prices = fh.get_price_dict()
+    fh.extract_prices(price_dict)
+    out: str =  fh.concat_price_dict(price_dict)
+    fh.save_to_file(out)
+    #fh.combine_timeslots(price_dict)
 
