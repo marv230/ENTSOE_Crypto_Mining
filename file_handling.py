@@ -124,8 +124,32 @@ def concat_price_dict(price_dict: dict[pd.Timestamp, float]) -> str:
 def save_to_file(string: str) -> None:
     # Save content to file
     with open("extracted_prices.txt", "w") as fr:
-        fr.write(out)
         fr.write(string)
+
+def can_combine(ref_interval: pd.Interval, next_interval: pd.Interval) -> bool:
+    if ref_interval.overlaps(next_interval):
+        return True
+    else:
+        return False
+
+def combine_timeslots(price_dict: dict[pd.Timestamp, float]) -> list:
+    timeslots = []
+    timeslices_list = []
+    for timestamp in price_dict.keys():
+        #interval must be closed="both" for the overlapping check later to work.
+        timeslice = pd.Interval(timestamp, timestamp + TIMESLICE_RES, closed="both")
+        timeslices_list.append(timeslice)
+
+    # Loop over all but the last timeslice in the list, skipping the last item because it cannot possibly be combined with a nonexistent next one
+    index = 0
+    offset = 0
+    lookahead = 1
+    list_range = range(len(timeslices_list))
+    while index + offset + lookahead in list_range:
+        #initialize the start and end timestamps using the current timeslice
+        reference_interval = timeslices_list[index]
+        interval_start = reference_interval.left
+        interval_end = reference_interval.right
 
 def filter_prices() -> None:
     # TODO: 1. Clear any spots greater than 0ct/KWh
