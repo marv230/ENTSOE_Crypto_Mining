@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import cast
 import pandas as pd
 import re
 import xml.etree.ElementTree as Etree
@@ -33,7 +34,7 @@ def use_api(ts_prev: pd.Timestamp):
     ts_cur = ts_prev + pd.Timedelta(days=1)
 
     # If an invalid timestamp is provided, abort
-    if pd.isna(ts_prev) or pd.isna(ts_cur):
+    if pd.isna(ts_prev) or pd.isna(ts_cur) or not isinstance(ts_cur, pd.Timestamp):
         print('Invalid timestamp provided, aborting....')
         return
 
@@ -65,25 +66,34 @@ def update_outfile(ts: pd.Timestamp) -> None:
         except Etree.ParseError:
             print('Invalid XML file, fetching API request....\n')
             use_api(ts)
+            return
         root = xml_tree.getroot()
 
         # Extract date from XML file
+        curve_start_timestamp: pd.Timestamp | None = None
+        curve_end_timestamp: pd.Timestamp | None = None
+        curve_period: pd.Interval | None = None
+
         time_interval = root.find('.//ns:period.timeInterval', ns)
         if time_interval is not None:
             xml_starttime = time_interval.find('ns:start', ns)
             if xml_starttime is not None and xml_starttime.text is not None:
-                curve_start_timestamp = pd.Timestamp(xml_starttime.text.strip())
+                start_ts = pd.Timestamp(xml_starttime.text.strip())
+                if isinstance(start_ts, pd.Timestamp):
+                    curve_start_timestamp = start_ts
 
             # Create timestamp from XML curve end time string
             xml_endtime = time_interval.find('ns:end', ns)
             if xml_endtime is not None and xml_endtime.text is not None:
-                curve_end_timestamp = pd.Timestamp(xml_endtime.text.strip())
+                end_ts = pd.Timestamp(xml_endtime.text.strip())
+                if isinstance(end_ts, pd.Timestamp):
+                    curve_end_timestamp = end_ts
 
-            if curve_start_timestamp and curve_end_timestamp:
+            if curve_start_timestamp is not None and curve_end_timestamp is not None:
                 curve_period = pd.Interval(curve_start_timestamp, curve_end_timestamp, closed="left")
                 print(f"Fetched XML date range: {curve_period}" + "\n")
 
-        if not curve_period:
+        if curve_period is None:
             print('Date in XML not found, fetching API request....\n')
             use_api(ts)
 
@@ -95,7 +105,7 @@ def update_outfile(ts: pd.Timestamp) -> None:
                 print('Existing data in XML is outdated, fetching API request....\n')
                 use_api(ts)
 
-def extract_prices(price_dict: dict[int, float]) -> None:
+def extract_prices(price_dict: dict[pd.Timestamp, float]) -> None:
     # Validity of XML already checked in update_outfile()
     tree = Etree.parse(main.path_to_outfile)
     root = tree.getroot()
@@ -111,7 +121,7 @@ def extract_prices(price_dict: dict[int, float]) -> None:
         if pos_elem is not None and price_elem is not None and price_elem.text is not None and pos_elem.text is not None:
             pos = int(pos_elem.text.strip())
             time_offset_from_start = pd.Timedelta((TIMESLICE_RES * pos)-TIMESLICE_RES)
-            time_pos = start_time + time_offset_from_start
+            time_pos = cast(pd.Timestamp, cast(object, start_time + time_offset_from_start))
             # Convert from MWh to kWh using 10⁻³ and round to 4 decimal places
             prz = (float(price_elem.text.strip()) * 10 ** -3).__round__(4)
             price_dict[time_pos] = prz
@@ -138,7 +148,8 @@ def combine_timeslots(price_dict: dict[pd.Timestamp, float]) -> list:
     timeslices_list = []
     for timestamp in price_dict.keys():
         #interval must be closed="both" for the overlapping check later to work.
-        timeslice = pd.Interval(timestamp, timestamp + TIMESLICE_RES, closed="both")
+        end_time = cast(pd.Timestamp, cast(object, timestamp + TIMESLICE_RES))
+        timeslice = pd.Interval(timestamp, end_time, closed="both")
         timeslices_list.append(timeslice)
 
     # Loop over all but the last timeslice in the list, skipping the last item because it cannot possibly be combined with a nonexistent next one

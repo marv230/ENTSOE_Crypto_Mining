@@ -26,6 +26,7 @@ def update_data() -> str:
     fh.update_outfile(date_today)
     fh.extract_prices(price_dict)
     out: str = fh.concat_price_dict(price_dict)
+    print(out)
     fh.save_to_file(out)
     #fh.combine_timeslots(price_dict)
     return out
@@ -37,5 +38,5 @@ if __name__ == '__main__':
 
     update_data()
 
-    tg.start_bot()
+    #tg.start_bot()
 
