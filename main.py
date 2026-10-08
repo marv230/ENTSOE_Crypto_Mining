@@ -17,20 +17,25 @@ price_dict: dict[int, float] = {}
 
 import pandas
 
-if __name__ == '__main__':
-    # Check API key before touching anything else
-    if fh.get_api_key() is None:
-        exit(1)
-
+# Extract prices into dictionary, save that data to file, filter prices and combine timeslots
+def update_data() -> str:
     # Fetch time current day
     date_today = pandas.Timestamp.now(tz=TIMEZONE)
     print("Fetched date today: " + str(date_today.year) + "-" + str(date_today.month) + "-" + str(date_today.day))
 
     fh.update_outfile(date_today)
-
-    # Extract prices into dictionary, save that data to file, filter prices and combine timeslots
     fh.extract_prices(price_dict)
-    out: str =  fh.concat_price_dict(price_dict)
+    out: str = fh.concat_price_dict(price_dict)
     fh.save_to_file(out)
     #fh.combine_timeslots(price_dict)
+    return out
+
+if __name__ == '__main__':
+    # Check API key before touching anything else
+    if fh.get_api_key() is None:
+        exit(1)
+
+    update_data()
+
+    tg.start_bot()
 
