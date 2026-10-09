@@ -137,12 +137,14 @@ def save_to_file(string: str) -> None:
     with open("extracted_prices.txt", "w") as fr:
         fr.write(string)
 
+# Credit to 'DifferentLettuce' for this function
 def can_combine(ref_interval: pd.Interval, next_interval: pd.Interval) -> bool:
     if ref_interval.overlaps(next_interval):
         return True
     else:
         return False
 
+# Credit to 'DifferentLettuce' for this function
 def combine_timeslots(price_dict: dict[pd.Timestamp, float]) -> list:
     timeslots = []
     timeslices_list = []
