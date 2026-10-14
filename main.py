@@ -38,5 +38,5 @@ if __name__ == '__main__':
 
     update_data()
 
-    #tg.start_bot()
+    tg.start_bot()
 

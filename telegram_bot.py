@@ -1,22 +1,44 @@
 from pathlib import Path
 import re
 from telegram import Update
+from telegram.constants import MessageLimit
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
 import main
-
-# Function that handles /start command
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text('Hello! I am your bot. How can I help you today?')
 
 async def stop(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text('Stopping bot...')
     exit(0)
 
+def split_message(text: str, max_length: int = MessageLimit.MAX_TEXT_LENGTH) -> list[str]:
+    if not text:
+        return []
+
+    messages = []
+    current_chunk = ""
+    for line in text.splitlines(keepends=True):
+        if len(current_chunk) + len(line) <= max_length:
+            current_chunk += line
+        else:
+            if current_chunk:
+                messages.append(current_chunk)
+            current_chunk = line
+
+    if current_chunk:
+        messages.append(current_chunk)
+
+    return messages
+
 async def prices(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    #TODO: Split output of function into messages able to be sent
-    main.update_data()
-    await update.message.reply_text()
+    # Split output of function into messages able to be sent
+    price_data = main.update_data()
+    for msg in split_message(price_data):
+        await update.message.reply_text(msg)
+
+async def help_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text('Available commands:\n/start - Start the bot\n/stop - Stop the bot\n/prices - Get current prices\n/help - Display this message')
+
+
 
 def get_key() -> str:
     path = Path(main.path_Telegram_token)
