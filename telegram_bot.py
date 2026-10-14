@@ -64,9 +64,9 @@ def start_bot():
     application = ApplicationBuilder().token(token).build()
 
     # Register the /start command
-    application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("stop", stop))
     application.add_handler(CommandHandler("prices", prices))
+    application.add_handler(CommandHandler("help", help_msg))
 
     # Run the bot until you send a signal to stop
     application.run_polling()
